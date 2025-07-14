@@ -12,7 +12,8 @@
 
 
 // Pin-Definitionen
-const int ledPin = LED_BUILTIN; // Oder LED_BUILTIN
+const int ledPin = LED_BUILTIN;    // LED auf PIN = LED_BUILTIN
+const int ledPin2 = D4;            // LED auf PIN = D4
 
 
 
@@ -30,13 +31,13 @@ const int ledPin = LED_BUILTIN; // Oder LED_BUILTIN
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 
 
-
-
 // LCD Definitionen
 const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 // Prüfe deine LCD I2C-Adresse! 0x27 oder 0x3F sind am häufigsten.
 LiquidCrystal_I2C lcd(0x27, LCD_COLS, LCD_ROWS); 
+
+
 
 
 
@@ -63,8 +64,9 @@ AsyncWebServer server(80);
 
 
 
+
+// Initialisiere OLED SSD1306 Display
 void initDisplay() {
-  // Initialisiere Display
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
     Serial.println(F("SSD1306 konnte nicht initialisiert werden!"));
     while (true); // Anhalten, wenn das Display nicht gefunden wird
@@ -89,8 +91,10 @@ void initDisplay() {
 }
 
 
+
+
+// LCD initialisieren
 void initLCD() {
-  // LCD initialisieren
   lcd.init();      // Initialisiert das LCD
   lcd.backlight(); // Schaltet die Hintergrundbeleuchtung ein
 
@@ -103,33 +107,21 @@ void initLCD() {
 }
 
 
-void setup() {
-
-  // Serielle Kommunikation starten
-  Serial.begin(115200);
-  Serial.println("\nStarting NodeMCU...");
-
-  Wire.begin(D2, D1); // SDA, SCL
 
 
-  // LED Pin initialisieren
+// LED Pin initialisieren
+void initLED() {
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, LOW); // LED aus
   delay(1000); // Kurze Pause, um den Start zu stabilisieren
   digitalWrite(ledPin, HIGH); // LED an
+}
 
 
 
 
-  // 1. Initialisiere Displays
-  initDisplay();
-  initLCD();
-
-
-
-
-
-  // 2. Initialisiere DateiSystem (LittleFS)
+// 2. Initialisiere DateiSystem (LittleFS)
+void initFS() {
   Serial.println("Mounting LittleFS...");
 
   if(!LittleFS.begin()){
@@ -141,10 +133,12 @@ void setup() {
     return;
   }
   Serial.println("LittleFS mounted successfully.");
+}
 
 
 
-  // 3. WLAN verbinden
+
+void initWIFI() {
   Serial.print("Verbinde mit WLAN: ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
@@ -170,7 +164,45 @@ void setup() {
   display.println(WiFi.localIP());
   display.display();
 
-  // 3. Webserver-Routen definieren
+}
+
+
+// Setup-Funktion, die einmal beim Start aufgerufen wird
+void setup() {
+
+  // 1. Serielle Kommunikation starten
+  Serial.begin(115200);
+  Serial.println("\nStarting NodeMCU...");
+
+
+  // 2. Initialisiere LED
+  initLED();
+  
+  
+  // 3. I2C initialisieren
+  Wire.begin(D2, D1); // SDA, SCL
+
+
+  
+
+  // 4. Initialisiere Displays
+  initDisplay();   //  4.1 Initialisiere OLED SSD1306 Display
+  initLCD();       //  4.2 Initialisiere LCD
+
+
+  
+
+
+  // 5. Initialisiere DateiSystem (LittleFS)
+  initFS();
+
+
+  // 6. WLAN verbinden
+  initWIFI();
+
+
+
+  // 7. Webserver-Routen definieren
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   // Fallback-Route, wenn eine Datei nicht gefunden wird.
@@ -179,7 +211,7 @@ void setup() {
   });
 
 
-  // 4. Webserver starten
+  // 8. Webserver starten
   server.begin();
   Serial.println("Webserver gestartet!");
 
