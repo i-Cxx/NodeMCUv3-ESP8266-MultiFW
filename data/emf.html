@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP8266 EMF Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; text-align: center; background-color: #f0f0f0; margin: 0; padding: 20px;}
+    .container { background-color: #fff; margin: 20px auto; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; }
+    h1 { color: #333; margin-bottom: 20px; }
+    #emfValue { font-size: 4em; font-weight: bold; color: #007bff; margin-bottom: 20px; }
+    #barContainer { width: 80%; height: 30px; background-color: #eee; border-radius: 5px; margin: 0 auto 20px auto; overflow: hidden; border: 1px solid #ccc; }
+    #progressBar { height: 100%; width: 0%; background-color: #28a745; border-radius: 5px; transition: width 0.3s ease-in-out; }
+    p { color: #555; }
+    .status { font-size: 0.9em; color: #888; margin-top: 15px; }
+    .footer { margin-top: 30px; font-size: 0.8em; color: #aaa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>EMF Messwerte</h1>
+    <p>Aktueller EMF-Scan:</p>
+    <div id="emfValue">--</div>
+    <div id="barContainer">
+      <div id="progressBar"></div>
+    </div>
+    <p class="status">Wird aktualisiert... <span id="lastUpdated"></span></p>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2025 ESP8266 EMF Monitor</p>
+  </div>
+
+  <script>
+    const emfValueDisplay = document.getElementById('emfValue');
+    const progressBar = document.getElementById('progressBar');
+    const lastUpdatedDisplay = document.getElementById('lastUpdated');
+
+    async function fetchEmfValue() {
+      try {
+        // Abruf der Daten vom ESP8266.
+        // Der ESP stellt diese Daten unter dem Pfad '/data' bereit.
+        const response = await fetch('/data');
+        const data = await response.json(); // Erwarte JSON-Antwort
+
+        // Aktualisiere den angezeigten Wert
+        const emfValue = data.emf;
+        emfValueDisplay.textContent = emfValue;
+
+        // Aktualisiere die Fortschrittsanzeige (0-1023 fÃ¼r ESP8266 ADC)
+        const maxAdcValue = 1023;
+        let percentage = (emfValue / maxAdcValue) * 100;
+        if (percentage > 100) percentage = 100; // Sicherstellen, dass es nicht Ã¼ber 100% geht
+        progressBar.style.width = percentage + '%';
+
+        // Farbwechsel der Fortschrittsanzeige basierend auf dem Wert
+        if (emfValue < 300) {
+          progressBar.style.backgroundColor = '#28a745'; // GrÃ¼n (Niedrig)
+        } else if (emfValue < 700) {
+          progressBar.style.backgroundColor = '#ffc107'; // Gelb (Mittel)
+        } else {
+          progressBar.style.backgroundColor = '#dc3545'; // Rot (Hoch)
+        }
+
+        // Aktualisiere den Zeitstempel der letzten Aktualisierung
+        lastUpdatedDisplay.textContent = new Date().toLocaleTimeString();
+
+      } catch (error) {
+        console.error('Fehler beim Abrufen der EMF-Werte:', error);
+        emfValueDisplay.textContent = 'Fehler!';
+        progressBar.style.width = '0%';
+        progressBar.style.backgroundColor = '#6c757d'; // Grau bei Fehler
+        lastUpdatedDisplay.textContent = 'Verbindungsfehler';
+      }
+    }
+
+    // Sofort beim Laden der Seite den ersten Wert abrufen
+    fetchEmfValue();
+
+    // Werte alle 1 Sekunde aktualisieren
+    setInterval(fetchEmfValue, 1000); // 1000 ms = 1 Sekunde
+
+  </script>
+</body>
+</html>

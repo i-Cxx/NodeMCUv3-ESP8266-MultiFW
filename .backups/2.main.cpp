@@ -10,6 +10,8 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h> // FÃ¼r die JSON-Erstellung
 
+
+
 // ==========================
 // Pin-Definitionen
 // ==========================
@@ -18,6 +20,9 @@ const int analogPin = A0; // EMF-Messung / ADC
 #define PIN_ANTENNA A0
 #define CHECK_DELAY 1000
 #define lmillis() ((long)millis())
+int currentEmfValue = 0; // Hier wird der aktuellste EMF-Wert gespeichert
+
+
 
 // ==========================
 // Display-Konfiguration
@@ -41,12 +46,6 @@ const char* ap_password = "1234567890";
 // Webserver
 // ==========================
 AsyncWebServer server(80);
-
-// ==========================
-// Globale Variablen
-// ==========================
-int currentEmfValue = 0; // Hier wird der aktuellste EMF-Wert gespeichert
-
 
 // ==========================
 // Setup Funktionen
@@ -147,25 +146,6 @@ void initWebServer() {
     request->send(LittleFS, "/test.html", "text/html");
   });
 
-  // NEUE ROUTE fÃ¼r die EMF-Seite
-  server.on("/emf", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(LittleFS, "/emf.html", "text/html");
-  });
-
-  // NEUE ROUTE zum Abrufen der EMF-Daten als JSON
-  server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
-    // Erstelle ein JSON-Dokument
-    DynamicJsonDocument doc(128); // 128 Bytes sollten genÃ¼gen
-    doc["emf"] = currentEmfValue;
-
-    // Serialisiere das JSON-Dokument in einen String
-    String output;
-    serializeJson(doc, output);
-
-    // Sende die JSON-Antwort
-    request->send(200, "application/json", output);
-  });
-
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "404: Not Found");
   });
@@ -204,11 +184,6 @@ void setup() {
   initLCD();
   initLittleFS();
   initWiFiAP();
-  
-  // Bibliotheksinstallation: Suche nach "ArduinoJson" und installiere sie.
-  // FÃ¼r die JSON-Erstellung ist die Bibliothek ArduinoJson erforderlich.
-  // Du musst sie Ã¼ber den Bibliotheksverwalter der Arduino IDE installieren.
-
   initWebServer();
 
 
@@ -221,39 +196,35 @@ void loop() {
   const long interval = 500;
   static bool ledState = LOW;
 
-  static int avgValue = 0;
-  static long nextCheck = 0, emfSum = 0, iterations = 0;
+  static int avgValue = 0, emfValue = 0;
+    static long nextCheck = 0, emfSum = 0, iterations = 0;
 
-  // EMF-Wert lesen und zur Summe hinzufÃ¼gen
-  int rawEmfValue = analogRead(PIN_ANTENNA);
-  currentEmfValue = constrain(rawEmfValue, 0, 1023); // Aktualisiere die globale Variable
-  emfSum += currentEmfValue;
-  iterations++;
+    emfValue = constrain(analogRead(PIN_ANTENNA), 0, 1023);
+    emfSum += emfValue;
+    iterations++;
 
-  if (lmillis() - nextCheck >= 0) {
-      avgValue = emfSum / iterations;
-      emfSum = 0;
-      iterations = 0;
-      showReadings(avgValue); // Zeigt den Durchschnittswert auf dem Display an
-      nextCheck = lmillis() + CHECK_DELAY;
+    if (lmillis() - nextCheck >= 0) {
+        avgValue = emfSum / iterations;
+        emfSum = 0;
+        iterations = 0;
+        showReadings(avgValue);
+        nextCheck = lmillis() + CHECK_DELAY;
+    }
+    display.drawRoundRect(0, 5, 126, 30, 2, WHITE);
+    display.fillRect(5, 10, 120, 23, BLACK);
+    display.fillRect(5, 10, map(emfValue, 0, 1023, 0, 118), 20, WHITE);
+    display.display();
+
+if (emfValue > 80 && emfValue <150) {
+  tone (12,100,500);
   }
-  
-  // Bar-Anzeige auf dem OLED-Display (verwendet den aktuellen Einzelwert)
-  display.drawRoundRect(0, 5, 126, 30, 2, WHITE);
-  display.fillRect(5, 10, 120, 23, BLACK);
-  display.fillRect(5, 10, map(currentEmfValue, 0, 1023, 0, 118), 20, WHITE);
-  display.display();
+if (emfValue > 151 && emfValue <250) {
+  tone (12,500,500);
+}
+if (emfValue > 251 ) {
+  tone (12,1000,500);
+}
 
-  // Ton-Ausgabe basierend auf dem aktuellen EMF-Wert
-  if (currentEmfValue > 80 && currentEmfValue < 150) {
-    tone (12, 100, 500);
-  } else if (currentEmfValue > 151 && currentEmfValue < 250) {
-    tone (12, 500, 500);
-  } else if (currentEmfValue > 251 ) {
-    tone (12, 1000, 500);
-  }
-
-  // LED-Blinken
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
