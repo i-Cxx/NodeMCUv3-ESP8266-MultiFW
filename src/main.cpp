@@ -93,15 +93,17 @@ void initDisplay() {
 
 
 
-// LCD initialisieren
+// LCD 1602 LiquidCrystal Display initialisieren
 void initLCD() {
-  lcd.init();      // Initialisiert das LCD
-  lcd.backlight(); // Schaltet die Hintergrundbeleuchtung ein
+  lcd.init();                    // Initialisiert das LCD
+  lcd.backlight();               // Schaltet die Hintergrundbeleuchtung ein
 
-  lcd.setCursor(0,0);
-  lcd.print("LCD OK!");
-  lcd.setCursor(0,1);
-  lcd.print("NodeMCU");
+  lcd.setCursor(0,0);            // Setzt den Cursor auf die erste Zeile, erste Spalte
+  lcd.print("Hello, LCD!");      // Gibt Text auf dem LCD aus
+  lcd.setCursor(0,1);            // Setzt den Cursor auf die zweite Zeile, erste Spalte
+  lcd.print("... .. .");         // Gibt Text auf der zweiten Zeile aus
+
+  
 
   Serial.println("LCD initialisiert.");
 }
