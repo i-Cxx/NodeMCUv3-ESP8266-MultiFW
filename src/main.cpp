@@ -9,11 +9,16 @@
 #include <LiquidCrystal_I2C.h>
 #include <LittleFS.h>
 
+
+
 // ==========================
 // Pin-Definitionen
 // ==========================
 const int ledPin = LED_BUILTIN;
 const int analogPin = A0; // EMF-Messung / ADC
+#define PIN_ANTENNA A0
+#define CHECK_DELAY 1000
+#define lmillis() ((long)millis())
 
 // ==========================
 // Display-Konfiguration
@@ -133,6 +138,10 @@ void initWebServer() {
     request->send(LittleFS, "/index.html", "text/html");
   });
 
+  server.on("/test", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/test.html", "text/html");
+  });
+
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "404: Not Found");
   });
@@ -141,12 +150,29 @@ void initWebServer() {
   Serial.println("Webserver gestartet");
 }
 
+
+void showReadings(int emfValue)
+{
+    display.clearDisplay();   
+    display.setTextSize(3);
+    display.setTextColor(WHITE);
+    display.setCursor(5,40);
+    display.println("EMF");
+
+    display.setCursor(70,40);
+    display.println(emfValue);
+
+    display.display();
+}
+
+
 // ==========================
 // Setup & Loop
 // ==========================
 void setup() {
   Serial.begin(115200);
   Serial.println("\nESP startet...");
+  pinMode(PIN_ANTENNA, INPUT);
 
   initLED();
   Wire.begin(D2, D1); // I2C-Pins
@@ -155,6 +181,9 @@ void setup() {
   initLittleFS();
   initWiFiAP();
   initWebServer();
+
+
+  display.clearDisplay();
 }
 
 void loop() {
@@ -162,6 +191,35 @@ void loop() {
   static unsigned long previousMillis = 0;
   const long interval = 500;
   static bool ledState = LOW;
+
+  static int avgValue = 0, emfValue = 0;
+    static long nextCheck = 0, emfSum = 0, iterations = 0;
+
+    emfValue = constrain(analogRead(PIN_ANTENNA), 0, 1023);
+    emfSum += emfValue;
+    iterations++;
+
+    if (lmillis() - nextCheck >= 0) {
+        avgValue = emfSum / iterations;
+        emfSum = 0;
+        iterations = 0;
+        showReadings(avgValue);
+        nextCheck = lmillis() + CHECK_DELAY;
+    }
+    display.drawRoundRect(0, 5, 126, 30, 2, WHITE);
+    display.fillRect(5, 10, 120, 23, BLACK);
+    display.fillRect(5, 10, map(emfValue, 0, 1023, 0, 118), 20, WHITE);
+    display.display();
+
+if (emfValue > 80 && emfValue <150) {
+  tone (12,100,500);
+  }
+if (emfValue > 151 && emfValue <250) {
+  tone (12,500,500);
+}
+if (emfValue > 251 ) {
+  tone (12,1000,500);
+}
 
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
