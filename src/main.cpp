@@ -1,23 +1,34 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <LiquidCrystal_I2C.h>
+#include <LittleFS.h>
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <SPI.h>
-#include <LiquidCrystal_I2C.h>
-#include <LittleFS.h>
-#include <ArduinoJson.h> // FÃ¼r die JSON-Erstellung
+#include <ArduinoJson.h>
+
+
+
+
 
 // ==========================
 // Pin-Definitionen
 // ==========================
-const int ledPin = LED_BUILTIN;
-const int analogPin = A0; // EMF-Messung / ADC
+const int ledPin = LED_BUILTIN;    // Onboard-LED
+const int analogPin = A0;          // EMF-Messung / ADC
+
 #define PIN_ANTENNA A0
+
+// ==========================
+// Konstanten
+// ==========================
 #define CHECK_DELAY 1000
 #define lmillis() ((long)millis())
+
+
 
 // ==========================
 // Display-Konfiguration
@@ -31,21 +42,29 @@ const int LCD_COLS = 16;
 const int LCD_ROWS = 2;
 LiquidCrystal_I2C lcd(0x27, LCD_COLS, LCD_ROWS); // Achte ggf. auf 0x3F
 
+
+
 // ==========================
 // WLAN Access Point
 // ==========================
 const char* ap_ssid = "ESP_Hotspot";
 const char* ap_password = "1234567890";
 
+
+
 // ==========================
 // Webserver
 // ==========================
 AsyncWebServer server(80);
 
+
+
 // ==========================
 // Globale Variablen
 // ==========================
 int currentEmfValue = 0; // Hier wird der aktuellste EMF-Wert gespeichert
+
+
 
 
 // ==========================
@@ -87,9 +106,9 @@ void initLCD() {
 }
 
 void initLittleFS() {
-  Serial.println("Mounting LittleFS...");
+  Serial.println("Console > Mounting LittleFS...");
   if (!LittleFS.begin()) {
-    Serial.println("Fehler beim Mounten von LittleFS!");
+    Serial.println("Console > Fehler beim Mounten von LittleFS!");
     display.clearDisplay();
     display.setCursor(0, 0);
     display.println("LittleFS Fehler!");
@@ -104,7 +123,7 @@ void initLittleFS() {
     lcd.clear();
     return;
   }
-  Serial.println("LittleFS erfolgreich gemountet.");
+  Serial.println("Console > LittleFS erfolgreich gemountet.");
 }
 
 void initWiFiAP() {
@@ -147,10 +166,13 @@ void initWebServer() {
     request->send(LittleFS, "/test.html", "text/html");
   });
 
-  // NEUE ROUTE fÃ¼r die EMF-Seite
+
+
+  // NEUE ROUTE für die EMF-Seite
   server.on("/emf", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(LittleFS, "/emf.html", "text/html");
   });
+
 
   // NEUE ROUTE zum Abrufen der EMF-Daten als JSON
   server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -166,12 +188,23 @@ void initWebServer() {
     request->send(200, "application/json", output);
   });
 
+
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/style.css", "text/css");
+  });
+
+  server.on("/emf.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/emf.css", "text/css");
+  });
+
+  
+
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "404: Not Found");
   });
 
   server.begin();
-  Serial.println("Webserver gestartet");
+  Serial.println("Console > Webserver gestartet");
 }
 
 
@@ -204,16 +237,13 @@ void setup() {
   initLCD();
   initLittleFS();
   initWiFiAP();
-  
-  // Bibliotheksinstallation: Suche nach "ArduinoJson" und installiere sie.
-  // FÃ¼r die JSON-Erstellung ist die Bibliothek ArduinoJson erforderlich.
-  // Du musst sie Ã¼ber den Bibliotheksverwalter der Arduino IDE installieren.
-
   initWebServer();
 
 
   display.clearDisplay();
 }
+
+
 
 void loop() {
   // Nicht-blockierendes Blinken der LED (Heartbeat)
